@@ -1,524 +1,841 @@
-// Funções para interagir com o Airtable
-// Carregar tipos de mapas
-function loadMapTypes() {
-    showLoading('map-types-loading');
-    
-    airtableBase(TABLES.MAP_TYPES).select({
-        view: 'Grid view'
-    }).eachPage(function page(records, fetchNextPage) {
-        // Processar os registros desta página
-        const mapTypes = records.map(record => ({
-            id: record.id,
-            name: record.get('Nome'),
-            value: record.get('Valor')
-        }));
-        
-        // Atualizar a interface com os tipos de mapas
-        updateMapTypesUI(mapTypes);
-        
-        // Buscar a próxima página, se houver
-        fetchNextPage();
-    }, function done(err) {
-        hideLoading('map-types-loading');
-        
-        if (err) {
-            console.error('Erro ao carregar tipos de mapas:', err);
-            showToast('Erro ao carregar tipos de mapas', 'error');
+// Configuração do Airtable
+// Inicializa a conexão com o Airtable
+var airtableBase;
+
+// Constantes para nomes de tabelas
+const TABLES = {
+    MAP_TYPES: 'Tipos de Mapa',
+    ORDERS: 'Pedidos',
+    CLIENTS: 'Clientes',
+    VIDEO_CALLS: 'Videochamadas'
+};
+
+// Inicializar Airtable
+function initAirtable() {
+    console.log("Inicializando Airtable...");
+    try {
+        // Verificar se a chave API está definida
+        if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+            console.error("Chave API ou Base ID do Airtable não definidos");
+            showToast("Erro ao conectar com Airtable. Verifique as configurações.", "error");
+            return false;
         }
-    });
+        
+        // Configurar Airtable
+        Airtable.configure({
+            apiKey: AIRTABLE_API_KEY
+        });
+        
+        // Inicializar base
+        airtableBase = Airtable.base(AIRTABLE_BASE_ID);
+        console.log("Airtable inicializado com sucesso!");
+        return true;
+    } catch (error) {
+        console.error("Erro ao inicializar Airtable:", error);
+        showToast("Erro ao conectar com Airtable: " + error.message, "error");
+        return false;
+    }
 }
 
-// Carregar pedidos
-function loadOrders(filters = {}) {
-    showLoading('orders-loading');
+// Carregar tipos de mapa
+function loadMapTypes(callback) {
+    console.log("Carregando tipos de mapa...");
     
-    // Construir filtro para o Airtable
-    let filterFormula = '';
-    
-    if (filters.responsible) {
-        filterFormula += `{Responsável} = '${filters.responsible}'`;
-    }
-    
-    if (filters.status) {
-        if (filterFormula) filterFormula += ' AND ';
-        filterFormula += `{Status} = '${filters.status}'`;
-    }
-    
-    if (filters.mapType) {
-        if (filterFormula) filterFormula += ' AND ';
-        filterFormula += `{Tipo de Mapa} = '${filters.mapType}'`;
-    }
-    
-    if (filters.date) {
-        if (filterFormula) filterFormula += ' AND ';
-        filterFormula += `DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') = '${filters.date}'`;
-    }
-    
-    // Configurar a consulta
-    const queryOptions = {
-        view: 'Grid view',
-        sort: [{field: 'Data da Compra', direction: 'desc'}]
-    };
-    
-    if (filterFormula) {
-        queryOptions.filterByFormula = filterFormula;
-    }
-    
-    // Fazer a consulta
-    airtableBase(TABLES.ORDERS).select(queryOptions).eachPage(function page(records, fetchNextPage) {
-        // Processar os registros desta página
-        const orders = records.map(record => ({
-            id: record.id,
-            clientName: record.get('Nome do Cliente'),
-            clientId: record.get('Cliente')[0],
-            purchaseDate: record.get('Data da Compra'),
-            mapType: record.get('Tipo de Mapa'),
-            responsible: record.get('Responsável'),
-            status: record.get('Status'),
-            whatsapp: record.get('WhatsApp')
-        }));
-        
-        // Atualizar a interface com os pedidos
-        updateOrdersUI(orders);
-        
-        // Buscar a próxima página, se houver
-        fetchNextPage();
-    }, function done(err) {
-        hideLoading('orders-loading');
-        
-        if (err) {
-            console.error('Erro ao carregar pedidos:', err);
-            showToast('Erro ao carregar pedidos', 'error');
-        }
-    });
-}
-
-// Carregar clientes
-function loadClients(search = '') {
-    showLoading('clients-loading');
-    
-    // Construir filtro para o Airtable
-    let filterFormula = '';
-    
-    if (search) {
-        filterFormula = `OR(FIND('${search.toLowerCase()}', LOWER({Nome})), FIND('${search.toLowerCase()}', LOWER({WhatsApp})))`;
-    }
-    
-    // Configurar a consulta
-    const queryOptions = {
-        view: 'Grid view',
-        sort: [{field: 'Nome', direction: 'asc'}]
-    };
-    
-    if (filterFormula) {
-        queryOptions.filterByFormula = filterFormula;
-    }
-    
-    // Fazer a consulta
-    airtableBase(TABLES.CLIENTS).select(queryOptions).eachPage(function page(records, fetchNextPage) {
-        // Processar os registros desta página
-        const clients = records.map(record => ({
-            id: record.id,
-            name: record.get('Nome'),
-            whatsapp: record.get('WhatsApp'),
-            birthDate: record.get('Data de Nascimento'),
-            birthTime: record.get('Hora de Nascimento'),
-            birthPlace: record.get('Local de Nascimento'),
-            purchaseCount: record.get('Total de Compras') || 0,
-            lastPurchase: record.get('Última Compra')
-        }));
-        
-        // Atualizar a interface com os clientes
-        updateClientsUI(clients);
-        
-        // Buscar a próxima página, se houver
-        fetchNextPage();
-    }, function done(err) {
-        hideLoading('clients-loading');
-        
-        if (err) {
-            console.error('Erro ao carregar clientes:', err);
-            showToast('Erro ao carregar clientes', 'error');
-        }
-    });
-}
-
-// Carregar videochamadas
-function loadVideoCalls(date = null) {
-    // Construir filtro para o Airtable
-    let filterFormula = '';
-    
-    if (date) {
-        filterFormula = `DATETIME_FORMAT({Data}, 'YYYY-MM-DD') = '${date}'`;
-    }
-    
-    // Configurar a consulta
-    const queryOptions = {
-        view: 'Grid view',
-        sort: [{field: 'Data', direction: 'asc'}]
-    };
-    
-    if (filterFormula) {
-        queryOptions.filterByFormula = filterFormula;
-    }
-    
-    // Fazer a consulta
-    airtableBase(TABLES.VIDEO_CALLS).select(queryOptions).eachPage(function page(records, fetchNextPage) {
-        // Processar os registros desta página
-        const videoCalls = records.map(record => ({
-            id: record.id,
-            clientName: record.get('Nome do Cliente'),
-            clientId: record.get('Cliente')[0],
-            date: record.get('Data'),
-            notes: record.get('Anotações'),
-            whatsapp: record.get('WhatsApp'),
-            completed: record.get('Concluída') || false
-        }));
-        
-        // Atualizar a interface com as videochamadas
-        updateVideoCallsUI(videoCalls);
-        
-        // Buscar a próxima página, se houver
-        fetchNextPage();
-    }, function done(err) {
-        if (err) {
-            console.error('Erro ao carregar videochamadas:', err);
-            showToast('Erro ao carregar videochamadas', 'error');
-        }
-    });
-}
-
-// Carregar dados financeiros
-function loadFinancialData(period = 'day', date = new Date()) {
-    // Construir filtro para o Airtable
-    let filterFormula = '';
-    let startDate, endDate;
-    
-    if (period === 'day') {
-        // Filtrar por dia específico
-        const formattedDate = formatDate(date);
-        filterFormula = `DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') = '${formattedDate}'`;
-    } else if (period === 'week') {
-        // Filtrar por semana
-        startDate = new Date(date);
-        startDate.setDate(date.getDate() - date.getDay()); // Domingo da semana
-        
-        endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 6); // Sábado da semana
-        
-        filterFormula = `AND(
-            DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') >= '${formatDate(startDate)}',
-            DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') <= '${formatDate(endDate)}'
-        )`;
-    } else if (period === 'month') {
-        // Filtrar por mês
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        
-        filterFormula = `AND(
-            YEAR({Data da Compra}) = ${year},
-            MONTH({Data da Compra}) = ${month}
-        )`;
-    }
-    
-    // Configurar a consulta
-    const queryOptions = {
-        view: 'Grid view'
-    };
-    
-    if (filterFormula) {
-        queryOptions.filterByFormula = filterFormula;
-    }
-    
-    // Fazer a consulta
-    airtableBase(TABLES.ORDERS).select(queryOptions).eachPage(function page(records, fetchNextPage) {
-        // Processar os registros desta página
-        const orders = records.map(record => ({
-            id: record.id,
-            clientName: record.get('Nome do Cliente'),
-            purchaseDate: record.get('Data da Compra'),
-            mapType: record.get('Tipo de Mapa'),
-            responsible: record.get('Responsável'),
-            status: record.get('Status'),
-            value: record.get('Valor')
-        }));
-        
-        // Atualizar a interface com os dados financeiros
-        updateFinancialUI(orders, period, date);
-        
-        // Buscar a próxima página, se houver
-        fetchNextPage();
-    }, function done(err) {
-        if (err) {
-            console.error('Erro ao carregar dados financeiros:', err);
-            showToast('Erro ao carregar dados financeiros', 'error');
-        }
-    });
-}
-
-// Registrar nova venda
-function createNewSale(saleData) {
-    // Primeiro, verificar se o cliente já existe
-    airtableBase(TABLES.CLIENTS).select({
-        filterByFormula: `{WhatsApp} = '${saleData.whatsapp}'`
-    }).firstPage((err, records) => {
-        if (err) {
-            console.error('Erro ao verificar cliente:', err);
-            showToast('Erro ao registrar venda', 'error');
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
-        
-        let clientId;
-        
-        // Se o cliente não existir, criar um novo
-        if (records.length === 0) {
-            airtableBase(TABLES.CLIENTS).create({
-                'Nome': saleData.name,
-                'WhatsApp': saleData.whatsapp,
-                'Data de Nascimento': saleData.birthDate,
-                'Hora de Nascimento': saleData.birthTime,
-                'Local de Nascimento': saleData.birthPlace
-            }, (err, record) => {
-                if (err) {
-                    console.error('Erro ao criar cliente:', err);
-                    showToast('Erro ao registrar venda', 'error');
-                    return;
-                }
-                
-                // Criar o pedido com o novo cliente
-                createOrder(record.id);
-            });
-        } else {
-            // Cliente já existe, usar o ID existente
-            clientId = records[0].id;
+    }
+    
+    try {
+        airtableBase(TABLES.MAP_TYPES).select({
+            view: 'Grid view',
+            sort: [{field: 'Nome', direction: 'asc'}]
+        }).eachPage(function page(records, fetchNextPage) {
+            const mapTypes = records.map(record => ({
+                id: record.id,
+                name: record.get('Nome'),
+                value: record.get('Valor') || 0
+            }));
             
-            // Atualizar informações do cliente, se necessário
-            airtableBase(TABLES.CLIENTS).update(clientId, {
-                'Data de Nascimento': saleData.birthDate,
-                'Hora de Nascimento': saleData.birthTime,
-                'Local de Nascimento': saleData.birthPlace
-            }, (err) => {
-                if (err) {
-                    console.error('Erro ao atualizar cliente:', err);
-                }
-                
-                // Criar o pedido com o cliente existente
-                createOrder(clientId);
-            });
-        }
-        
-        // Função para criar o pedido
-        function createOrder(clientId) {
-            // Buscar o valor do tipo de mapa
-            airtableBase(TABLES.MAP_TYPES).select({
-                filterByFormula: `{Nome} = '${saleData.mapType}'`
-            }).firstPage((err, records) => {
-                if (err || records.length === 0) {
-                    console.error('Erro ao buscar valor do mapa:', err);
-                    showToast('Erro ao registrar venda', 'error');
-                    return;
-                }
-                
-                const mapValue = records[0].get('Valor');
-                
-                // Criar o pedido
-                airtableBase(TABLES.ORDERS).create({
-                    'Cliente': [clientId],
-                    'Nome do Cliente': saleData.name,
-                    'WhatsApp': saleData.whatsapp,
-                    'Data da Compra': new Date().toISOString(),
-                    'Tipo de Mapa': saleData.mapType,
-                    'Responsável': saleData.responsible,
-                    'Status': 'Pendente',
-                    'Valor': mapValue
-                }, (err, record) => {
-                    if (err) {
-                        console.error('Erro ao criar pedido:', err);
-                        showToast('Erro ao registrar venda', 'error');
-                        return;
-                    }
-                    
-                    // Se requer videochamada, criar agendamento
-                    if (saleData.requiresVideocall) {
-                        // Criar entrada na tabela de videochamadas (sem data definida ainda)
-                        airtableBase(TABLES.VIDEO_CALLS).create({
-                            'Cliente': [clientId],
-                            'Nome do Cliente': saleData.name,
-                            'WhatsApp': saleData.whatsapp,
-                            'Pedido': [record.id],
-                            'Concluída': false
-                        }, (err) => {
-                            if (err) {
-                                console.error('Erro ao criar agendamento:', err);
-                                showToast('Venda registrada, mas houve erro ao criar agendamento', 'warning');
-                                return;
-                            }
-                            
-                            showToast('Venda registrada com sucesso!', 'success');
-                            resetNewSaleForm();
-                            loadOrders();
-                        });
-                    } else {
-                        showToast('Venda registrada com sucesso!', 'success');
-                        resetNewSaleForm();
-                        loadOrders();
-                    }
-                });
-            });
-        }
-    });
-}
-
-// Marcar pedido como enviado
-function markOrderAsSent(orderId) {
-    airtableBase(TABLES.ORDERS).update(orderId, {
-        'Status': 'Enviado'
-    }, (err) => {
-        if (err) {
-            console.error('Erro ao atualizar pedido:', err);
-            showToast('Erro ao marcar pedido como enviado', 'error');
-            return;
-        }
-        
-        showToast('Pedido marcado como enviado!', 'success');
-        loadOrders();
-    });
+            if (callback) {
+                callback(mapTypes);
+            }
+            
+            fetchNextPage();
+        }, function done(err) {
+            if (err) {
+                console.error('Erro ao carregar tipos de mapa:', err);
+                showToast('Erro ao carregar tipos de mapa', 'error');
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar tipos de mapa:", error);
+        showToast("Erro ao carregar dados: " + error.message, "error");
+    }
 }
 
 // Adicionar tipo de mapa
-function addMapType(mapTypeData) {
-    airtableBase(TABLES.MAP_TYPES).create({
-        'Nome': mapTypeData.name,
-        'Valor': mapTypeData.value
-    }, (err) => {
-        if (err) {
-            console.error('Erro ao adicionar tipo de mapa:', err);
-            showToast('Erro ao adicionar tipo de mapa', 'error');
+function addMapType(name, value, callback) {
+    console.log(`Adicionando tipo de mapa: ${name}, valor: ${value}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
-        
-        showToast('Tipo de mapa adicionado com sucesso!', 'success');
-        loadMapTypes();
-    });
+    }
+    
+    try {
+        airtableBase(TABLES.MAP_TYPES).create({
+            'Nome': name,
+            'Valor': parseFloat(value)
+        }, function(err, record) {
+            if (err) {
+                console.error('Erro ao adicionar tipo de mapa:', err);
+                showToast('Erro ao adicionar tipo de mapa', 'error');
+                return;
+            }
+            
+            showToast('Tipo de mapa adicionado com sucesso', 'success');
+            
+            if (callback) {
+                callback({
+                    id: record.id,
+                    name: name,
+                    value: parseFloat(value)
+                });
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao adicionar tipo de mapa:", error);
+        showToast("Erro ao adicionar dados: " + error.message, "error");
+    }
 }
 
 // Atualizar tipo de mapa
-function updateMapType(id, mapTypeData) {
-    airtableBase(TABLES.MAP_TYPES).update(id, {
-        'Nome': mapTypeData.name,
-        'Valor': mapTypeData.value
-    }, (err) => {
-        if (err) {
-            console.error('Erro ao atualizar tipo de mapa:', err);
-            showToast('Erro ao atualizar tipo de mapa', 'error');
+function updateMapType(id, name, value, callback) {
+    console.log(`Atualizando tipo de mapa: ${id}, nome: ${name}, valor: ${value}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
-        
-        showToast('Tipo de mapa atualizado com sucesso!', 'success');
-        loadMapTypes();
-    });
+    }
+    
+    try {
+        airtableBase(TABLES.MAP_TYPES).update(id, {
+            'Nome': name,
+            'Valor': parseFloat(value)
+        }, function(err, record) {
+            if (err) {
+                console.error('Erro ao atualizar tipo de mapa:', err);
+                showToast('Erro ao atualizar tipo de mapa', 'error');
+                return;
+            }
+            
+            showToast('Tipo de mapa atualizado com sucesso', 'success');
+            
+            if (callback) {
+                callback({
+                    id: record.id,
+                    name: name,
+                    value: parseFloat(value)
+                });
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar tipo de mapa:", error);
+        showToast("Erro ao atualizar dados: " + error.message, "error");
+    }
 }
 
 // Excluir tipo de mapa
-function deleteMapType(id) {
-    airtableBase(TABLES.MAP_TYPES).destroy(id, (err) => {
-        if (err) {
-            console.error('Erro ao excluir tipo de mapa:', err);
-            showToast('Erro ao excluir tipo de mapa', 'error');
+function deleteMapType(id, callback) {
+    console.log(`Excluindo tipo de mapa: ${id}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
-        
-        showToast('Tipo de mapa excluído com sucesso!', 'success');
-        loadMapTypes();
-    });
+    }
+    
+    try {
+        airtableBase(TABLES.MAP_TYPES).destroy(id, function(err, deletedRecord) {
+            if (err) {
+                console.error('Erro ao excluir tipo de mapa:', err);
+                showToast('Erro ao excluir tipo de mapa', 'error');
+                return;
+            }
+            
+            showToast('Tipo de mapa excluído com sucesso', 'success');
+            
+            if (callback) {
+                callback(id);
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao excluir tipo de mapa:", error);
+        showToast("Erro ao excluir dados: " + error.message, "error");
+    }
 }
 
-// Agendar videochamada
-function scheduleVideoCall(scheduleData) {
-    airtableBase(TABLES.VIDEO_CALLS).create({
-        'Cliente': [scheduleData.clientId],
-        'Nome do Cliente': scheduleData.clientName,
-        'WhatsApp': scheduleData.whatsapp,
-        'Data': scheduleData.dateTime,
-        'Anotações': scheduleData.notes,
-        'Concluída': false
-    }, (err) => {
-        if (err) {
-            console.error('Erro ao agendar videochamada:', err);
-            showToast('Erro ao agendar videochamada', 'error');
+// Carregar pedidos
+function loadOrders(filters, callback) {
+    console.log("Carregando pedidos com filtros:", filters);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
+    }
+    
+    try {
+        // Construir fórmula de filtro
+        let filterFormula = '';
         
-        showToast('Videochamada agendada com sucesso!', 'success');
-        loadVideoCalls();
-    });
+        if (filters) {
+            const filterConditions = [];
+            
+            if (filters.responsible) {
+                filterConditions.push(`{Responsável} = '${filters.responsible}'`);
+            }
+            
+            if (filters.status) {
+                filterConditions.push(`{Status} = '${filters.status}'`);
+            }
+            
+            if (filters.mapType) {
+                filterConditions.push(`{Tipo de Mapa} = '${filters.mapType}'`);
+            }
+            
+            if (filters.date) {
+                filterConditions.push(`DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') = '${filters.date}'`);
+            }
+            
+            if (filterConditions.length > 0) {
+                filterFormula = `AND(${filterConditions.join(', ')})`;
+            }
+        }
+        
+        const params = {
+            view: 'Grid view',
+            sort: [{field: 'Data da Compra', direction: 'desc'}]
+        };
+        
+        if (filterFormula) {
+            params.filterByFormula = filterFormula;
+        }
+        
+        airtableBase(TABLES.ORDERS).select(params).eachPage(function page(records, fetchNextPage) {
+            const orders = records.map(record => ({
+                id: record.id,
+                clientName: record.get('Nome do Cliente'),
+                clientId: record.get('Cliente')[0],
+                purchaseDate: record.get('Data da Compra'),
+                mapType: record.get('Tipo de Mapa'),
+                responsible: record.get('Responsável'),
+                status: record.get('Status') || 'Pendente',
+                requiresVideoCall: record.get('Requer Videochamada') || false,
+                birthDate: record.get('Data de Nascimento'),
+                birthTime: record.get('Hora de Nascimento'),
+                birthPlace: record.get('Local de Nascimento'),
+                whatsapp: record.get('WhatsApp')
+            }));
+            
+            if (callback) {
+                callback(orders);
+            }
+            
+            fetchNextPage();
+        }, function done(err) {
+            if (err) {
+                console.error('Erro ao carregar pedidos:', err);
+                showToast('Erro ao carregar pedidos', 'error');
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar pedidos:", error);
+        showToast("Erro ao carregar dados: " + error.message, "error");
+    }
+}
+
+// Adicionar pedido
+function addOrder(orderData, callback) {
+    console.log("Adicionando pedido:", orderData);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        // Verificar se o cliente já existe
+        findClientByWhatsApp(orderData.whatsapp, function(existingClient) {
+            if (existingClient) {
+                // Cliente já existe, usar ID existente
+                createOrderRecord(existingClient.id);
+            } else {
+                // Cliente não existe, criar novo
+                addClient({
+                    name: orderData.clientName,
+                    whatsapp: orderData.whatsapp,
+                    birthDate: orderData.birthDate,
+                    birthTime: orderData.birthTime,
+                    birthPlace: orderData.birthPlace
+                }, function(newClient) {
+                    createOrderRecord(newClient.id);
+                });
+            }
+        });
+        
+        // Função para criar o registro de pedido
+        function createOrderRecord(clientId) {
+            airtableBase(TABLES.ORDERS).create({
+                'Nome do Cliente': orderData.clientName,
+                'Cliente': [clientId],
+                'Data da Compra': new Date().toISOString(),
+                'Tipo de Mapa': orderData.mapType,
+                'Responsável': orderData.responsible,
+                'Status': 'Pendente',
+                'Requer Videochamada': orderData.requiresVideoCall,
+                'Data de Nascimento': orderData.birthDate,
+                'Hora de Nascimento': orderData.birthTime,
+                'Local de Nascimento': orderData.birthPlace,
+                'WhatsApp': orderData.whatsapp
+            }, function(err, record) {
+                if (err) {
+                    console.error('Erro ao adicionar pedido:', err);
+                    showToast('Erro ao adicionar pedido', 'error');
+                    return;
+                }
+                
+                showToast('Pedido adicionado com sucesso', 'success');
+                
+                if (callback) {
+                    callback({
+                        id: record.id,
+                        clientName: orderData.clientName,
+                        clientId: clientId,
+                        purchaseDate: new Date().toISOString(),
+                        mapType: orderData.mapType,
+                        responsible: orderData.responsible,
+                        status: 'Pendente',
+                        requiresVideoCall: orderData.requiresVideoCall,
+                        birthDate: orderData.birthDate,
+                        birthTime: orderData.birthTime,
+                        birthPlace: orderData.birthPlace,
+                        whatsapp: orderData.whatsapp
+                    });
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Erro ao adicionar pedido:", error);
+        showToast("Erro ao adicionar dados: " + error.message, "error");
+    }
+}
+
+// Atualizar status do pedido
+function updateOrderStatus(id, status, callback) {
+    console.log(`Atualizando status do pedido: ${id}, status: ${status}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        airtableBase(TABLES.ORDERS).update(id, {
+            'Status': status
+        }, function(err, record) {
+            if (err) {
+                console.error('Erro ao atualizar status do pedido:', err);
+                showToast('Erro ao atualizar status do pedido', 'error');
+                return;
+            }
+            
+            showToast('Status do pedido atualizado com sucesso', 'success');
+            
+            if (callback) {
+                callback({
+                    id: record.id,
+                    status: status
+                });
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao atualizar status do pedido:", error);
+        showToast("Erro ao atualizar dados: " + error.message, "error");
+    }
+}
+
+// Carregar clientes
+function loadClients(callback) {
+    console.log("Carregando clientes...");
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        airtableBase(TABLES.CLIENTS).select({
+            view: 'Grid view',
+            sort: [{field: 'Nome', direction: 'asc'}]
+        }).eachPage(function page(records, fetchNextPage) {
+            const clients = records.map(record => ({
+                id: record.id,
+                name: record.get('Nome'),
+                whatsapp: record.get('WhatsApp'),
+                birthDate: record.get('Data de Nascimento'),
+                birthTime: record.get('Hora de Nascimento'),
+                birthPlace: record.get('Local de Nascimento'),
+                mapCount: record.get('Mapas Comprados') || 0,
+                lastPurchase: record.get('Última Compra')
+            }));
+            
+            if (callback) {
+                callback(clients);
+            }
+            
+            fetchNextPage();
+        }, function done(err) {
+            if (err) {
+                console.error('Erro ao carregar clientes:', err);
+                showToast('Erro ao carregar clientes', 'error');
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar clientes:", error);
+        showToast("Erro ao carregar dados: " + error.message, "error");
+    }
+}
+
+// Buscar cliente por WhatsApp
+function findClientByWhatsApp(whatsapp, callback) {
+    console.log(`Buscando cliente por WhatsApp: ${whatsapp}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        airtableBase(TABLES.CLIENTS).select({
+            filterByFormula: `{WhatsApp} = '${whatsapp}'`,
+            maxRecords: 1
+        }).firstPage(function(err, records) {
+            if (err) {
+                console.error('Erro ao buscar cliente por WhatsApp:', err);
+                showToast('Erro ao buscar cliente', 'error');
+                return;
+            }
+            
+            if (records && records.length > 0) {
+                const record = records[0];
+                const client = {
+                    id: record.id,
+                    name: record.get('Nome'),
+                    whatsapp: record.get('WhatsApp'),
+                    birthDate: record.get('Data de Nascimento'),
+                    birthTime: record.get('Hora de Nascimento'),
+                    birthPlace: record.get('Local de Nascimento'),
+                    mapCount: record.get('Mapas Comprados') || 0,
+                    lastPurchase: record.get('Última Compra')
+                };
+                
+                if (callback) {
+                    callback(client);
+                }
+            } else {
+                if (callback) {
+                    callback(null);
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao buscar cliente por WhatsApp:", error);
+        showToast("Erro ao buscar dados: " + error.message, "error");
+        if (callback) {
+            callback(null);
+        }
+    }
+}
+
+// Adicionar cliente
+function addClient(clientData, callback) {
+    console.log("Adicionando cliente:", clientData);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        airtableBase(TABLES.CLIENTS).create({
+            'Nome': clientData.name,
+            'WhatsApp': clientData.whatsapp,
+            'Data de Nascimento': clientData.birthDate,
+            'Hora de Nascimento': clientData.birthTime,
+            'Local de Nascimento': clientData.birthPlace,
+            'Mapas Comprados': 1,
+            'Última Compra': new Date().toISOString()
+        }, function(err, record) {
+            if (err) {
+                console.error('Erro ao adicionar cliente:', err);
+                showToast('Erro ao adicionar cliente', 'error');
+                return;
+            }
+            
+            const client = {
+                id: record.id,
+                name: clientData.name,
+                whatsapp: clientData.whatsapp,
+                birthDate: clientData.birthDate,
+                birthTime: clientData.birthTime,
+                birthPlace: clientData.birthPlace,
+                mapCount: 1,
+                lastPurchase: new Date().toISOString()
+            };
+            
+            if (callback) {
+                callback(client);
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao adicionar cliente:", error);
+        showToast("Erro ao adicionar dados: " + error.message, "error");
+    }
+}
+
+// Carregar histórico de compras do cliente
+function loadClientHistory(clientId, callback) {
+    console.log(`Carregando histórico do cliente: ${clientId}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        airtableBase(TABLES.ORDERS).select({
+            filterByFormula: `FIND('${clientId}', {Cliente})`,
+            sort: [{field: 'Data da Compra', direction: 'desc'}]
+        }).eachPage(function page(records, fetchNextPage) {
+            const history = records.map(record => ({
+                id: record.id,
+                purchaseDate: record.get('Data da Compra'),
+                mapType: record.get('Tipo de Mapa'),
+                responsible: record.get('Responsável'),
+                status: record.get('Status') || 'Pendente'
+            }));
+            
+            if (callback) {
+                callback(history);
+            }
+            
+            fetchNextPage();
+        }, function done(err) {
+            if (err) {
+                console.error('Erro ao carregar histórico do cliente:', err);
+                showToast('Erro ao carregar histórico do cliente', 'error');
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar histórico do cliente:", error);
+        showToast("Erro ao carregar dados: " + error.message, "error");
+    }
+}
+
+// Carregar videochamadas
+function loadVideoCalls(callback) {
+    console.log("Carregando videochamadas...");
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        airtableBase(TABLES.VIDEO_CALLS).select({
+            view: 'Grid view',
+            sort: [{field: 'Data', direction: 'asc'}]
+        }).eachPage(function page(records, fetchNextPage) {
+            const videoCalls = records.map(record => ({
+                id: record.id,
+                clientName: record.get('Nome do Cliente'),
+                clientId: record.get('Cliente')[0],
+                dateTime: record.get('Data'),
+                notes: record.get('Anotações') || '',
+                whatsapp: record.get('WhatsApp'),
+                completed: record.get('Concluída') || false
+            }));
+            
+            if (callback) {
+                callback(videoCalls);
+            }
+            
+            fetchNextPage();
+        }, function done(err) {
+            if (err) {
+                console.error('Erro ao carregar videochamadas:', err);
+                showToast('Erro ao carregar videochamadas', 'error');
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar videochamadas:", error);
+        showToast("Erro ao carregar dados: " + error.message, "error");
+    }
+}
+
+// Adicionar videochamada
+function addVideoCall(videoCallData, callback) {
+    console.log("Adicionando videochamada:", videoCallData);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        // Buscar informações do cliente
+        airtableBase(TABLES.CLIENTS).find(videoCallData.clientId, function(err, record) {
+            if (err) {
+                console.error('Erro ao buscar cliente:', err);
+                showToast('Erro ao buscar cliente', 'error');
+                return;
+            }
+            
+            const clientName = record.get('Nome');
+            const whatsapp = record.get('WhatsApp');
+            
+            // Criar registro de videochamada
+            airtableBase(TABLES.VIDEO_CALLS).create({
+                'Nome do Cliente': clientName,
+                'Cliente': [videoCallData.clientId],
+                'Data': videoCallData.dateTime,
+                'Anotações': videoCallData.notes,
+                'WhatsApp': whatsapp,
+                'Concluída': false
+            }, function(err, record) {
+                if (err) {
+                    console.error('Erro ao adicionar videochamada:', err);
+                    showToast('Erro ao adicionar videochamada', 'error');
+                    return;
+                }
+                
+                showToast('Videochamada agendada com sucesso', 'success');
+                
+                if (callback) {
+                    callback({
+                        id: record.id,
+                        clientName: clientName,
+                        clientId: videoCallData.clientId,
+                        dateTime: videoCallData.dateTime,
+                        notes: videoCallData.notes,
+                        whatsapp: whatsapp,
+                        completed: false
+                    });
+                }
+            });
+        });
+    } catch (error) {
+        console.error("Erro ao adicionar videochamada:", error);
+        showToast("Erro ao adicionar dados: " + error.message, "error");
+    }
 }
 
 // Marcar videochamada como concluída
-function markVideoCallAsCompleted(id) {
-    airtableBase(TABLES.VIDEO_CALLS).update(id, {
-        'Concluída': true
-    }, (err) => {
-        if (err) {
-            console.error('Erro ao marcar videochamada como concluída:', err);
-            showToast('Erro ao marcar videochamada como concluída', 'error');
+function markVideoCallAsCompleted(id, callback) {
+    console.log(`Marcando videochamada como concluída: ${id}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
-        
-        showToast('Videochamada marcada como concluída!', 'success');
-        loadVideoCalls();
-    });
+    }
+    
+    try {
+        airtableBase(TABLES.VIDEO_CALLS).update(id, {
+            'Concluída': true
+        }, function(err, record) {
+            if (err) {
+                console.error('Erro ao marcar videochamada como concluída:', err);
+                showToast('Erro ao atualizar videochamada', 'error');
+                return;
+            }
+            
+            showToast('Videochamada marcada como concluída', 'success');
+            
+            if (callback) {
+                callback({
+                    id: record.id,
+                    completed: true
+                });
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao marcar videochamada como concluída:", error);
+        showToast("Erro ao atualizar dados: " + error.message, "error");
+    }
 }
 
 // Excluir videochamada
-function deleteVideoCall(id) {
-    airtableBase(TABLES.VIDEO_CALLS).destroy(id, (err) => {
-        if (err) {
-            console.error('Erro ao excluir videochamada:', err);
-            showToast('Erro ao excluir videochamada', 'error');
+function deleteVideoCall(id, callback) {
+    console.log(`Excluindo videochamada: ${id}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
             return;
         }
-        
-        showToast('Videochamada excluída com sucesso!', 'success');
-        loadVideoCalls();
-    });
-}
-
-// Exportar dados para CSV
-function exportToCSV(data, filename) {
-    // Verificar se há dados para exportar
-    if (!data || !data.length) {
-        showToast('Não há dados para exportar', 'warning');
-        return;
     }
     
-    // Obter cabeçalhos (nomes das propriedades)
-    const headers = Object.keys(data[0]);
-    
-    // Criar conteúdo CSV
-    let csvContent = headers.join(',') + '\n';
-    
-    // Adicionar linhas de dados
-    data.forEach(item => {
-        const row = headers.map(header => {
-            // Escapar aspas e adicionar aspas em volta de strings
-            const cell = item[header] !== null && item[header] !== undefined ? item[header].toString() : '';
-            return `"${cell.replace(/"/g, '""')}"`;
+    try {
+        airtableBase(TABLES.VIDEO_CALLS).destroy(id, function(err, deletedRecord) {
+            if (err) {
+                console.error('Erro ao excluir videochamada:', err);
+                showToast('Erro ao excluir videochamada', 'error');
+                return;
+            }
+            
+            showToast('Videochamada excluída com sucesso', 'success');
+            
+            if (callback) {
+                callback(id);
+            }
         });
-        
-        csvContent += row.join(',') + '\n';
-    });
-    
-    // Criar blob e link para download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    } catch (error) {
+        console.error("Erro ao excluir videochamada:", error);
+        showToast("Erro ao excluir dados: " + error.message, "error");
+    }
 }
+
+// Carregar dados financeiros
+function loadFinancialData(period, date, callback) {
+    console.log(`Carregando dados financeiros: período ${period}, data ${date}`);
+    
+    // Verificar se airtableBase está definido
+    if (!airtableBase) {
+        if (!initAirtable()) {
+            return;
+        }
+    }
+    
+    try {
+        // Calcular datas de início e fim com base no período
+        const startDate = new Date(date);
+        const endDate = new Date(date);
+        
+        switch (period) {
+            case 'day':
+                // Manter startDate e endDate como o mesmo dia
+                break;
+            case 'week':
+                // Ajustar para domingo (início da semana)
+                startDate.setDate(date.getDate() - date.getDay());
+                // Ajustar para sábado (fim da semana)
+                endDate.setDate(startDate.getDate() + 6);
+                break;
+            case 'month':
+                // Ajustar para primeiro dia do mês
+                startDate.setDate(1);
+                // Ajustar para último dia do mês
+                endDate.setMonth(date.getMonth() + 1);
+                endDate.setDate(0);
+                break;
+        }
+        
+        // Formatar datas para filtro
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        // Buscar pedidos no período
+        airtableBase(TABLES.ORDERS).select({
+            filterByFormula: `AND(
+                DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') >= '${startDateStr}',
+                DATETIME_FORMAT({Data da Compra}, 'YYYY-MM-DD') <= '${endDateStr}'
+            )`,
+            sort: [{field: 'Data da Compra', direction: 'asc'}]
+        }).eachPage(function page(records, fetchNextPage) {
+            // Processar pedidos
+            const orders = [];
+            
+            // Promessas para buscar valores dos tipos de mapa
+            const promises = records.map(record => {
+                return new Promise((resolve) => {
+                    const mapType = record.get('Tipo de Mapa');
+                    
+                    // Buscar valor do tipo de mapa
+                    airtableBase(TABLES.MAP_TYPES).select({
+                        filterByFormula: `{Nome} = '${mapType}'`,
+                        maxRecords: 1
+                    }).firstPage(function(err, mapTypeRecords) {
+                        let value = 0;
+                        
+                        if (!err && mapTypeRecords && mapTypeRecords.length > 0) {
+                            value = mapTypeRecords[0].get('Valor') || 0;
+                        }
+                        
+                        orders.push({
+                            id: record.id,
+                            clientName: record.get('Nome do Cliente'),
+                            purchaseDate: record.get('Data da Compra'),
+                            mapType: mapType,
+                            responsible: record.get('Responsável'),
+                            status: record.get('Status') || 'Pendente',
+                            value: value
+                        });
+                        
+                        resolve();
+                    });
+                });
+            });
+            
+            // Quando todas as promessas forem resolvidas
+            Promise.all(promises).then(() => {
+                if (callback) {
+                    callback(orders, period, date);
+                }
+                
+                fetchNextPage();
+            });
+        }, function done(err) {
+            if (err) {
+                console.error('Erro ao carregar dados financeiros:', err);
+                showToast('Erro ao carregar dados financeiros', 'error');
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar dados financeiros:", error);
+        showToast("Erro ao carregar dados: " + error.message, "error");
+    }
+}
+
+// Inicializar Airtable quando o documento estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM carregado, inicializando Airtable...");
+    initAirtable();
+});
