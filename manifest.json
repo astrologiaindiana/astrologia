@@ -1,0 +1,21 @@
+{
+  "name": "Astrologia Indiana",
+  "short_name": "Astrologia",
+  "description": "Sistema de gestão para Astrologia Indiana",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f5dc",
+  "theme_color": "#8d6e63",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

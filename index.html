@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astrologia Indiana</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div id="app">
+        <!-- Tela de Login -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="logo-container">
+                    <img src="assets/logo.png" alt="Astrologia Indiana" class="logo">
+                    <h1>Astrologia Indiana</h1>
+                </div>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="email">E-mail</label>
+                        <input type="email" id="email" placeholder="Seu e-mail">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" placeholder="Sua senha">
+                    </div>
+                    <button id="login-btn" class="btn btn-primary">Entrar</button>
+                    <p id="login-error" class="error-message"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout Principal (após login) -->
+        <div id="main-layout" class="screen">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <img src="assets/logo.png" alt="Astrologia Indiana" class="logo-small">
+                    <h2>Astrologia Indiana</h2>
+                </div>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li data-page="map-queue" class="active">
+                            <i class="fas fa-list-check"></i>
+                            <span>Painel de Pedidos</span>
+                        </li>
+                        <li data-page="new-sale">
+                            <i class="fas fa-cart-plus"></i>
+                            <span>Nova Venda</span>
+                        </li>
+                        <li data-page="clients">
+                            <i class="fas fa-users"></i>
+                            <span>Clientes</span>
+                        </li>
+                        <li data-page="video-calls">
+                            <i class="fas fa-video"></i>
+                            <span>Videochamadas</span>
+                        </li>
+                        <li data-page="financial">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Resumo Financeiro</span>
+                        </li>
+                        <li data-page="settings">
+                            <i class="fas fa-gear"></i>
+                            <span>Configurações</span>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="sidebar-footer">
+                    <div class="user-info">
+                        <img src="assets/user-avatar.png" alt="Avatar" class="user-avatar">
+                        <span id="user-name">Usuário</span>
+                    </div>
+                    <button id="logout-btn" class="btn btn-outline">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Conteúdo Principal -->
+            <main class="main-content">
+                <!-- Painel de Pedidos -->
+                <section id="map-queue-page" class="page active">
+                    <header class="page-header">
+                        <h1>Painel de Pedidos</h1>
+                        <div class="actions">
+                            <button id="export-queue-csv" class="btn btn-outline">
+                                <i class="fas fa-download"></i> Exportar CSV
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="filter-responsible">Responsável</label>
+                            <select id="filter-responsible">
+                                <option value="">Todos</option>
+                                <option value="Conrado">Conrado</option>
+                                <option value="Kavi">Kavi</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-status">Status</label>
+                            <select id="filter-status">
+                                <option value="">Todos</option>
+                                <option value="Pendente">Pendente</option>
+                                <option value="Enviado">Enviado</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-map-type">Tipo de Mapa</label>
+                            <select id="filter-map-type">
+                                <option value="">Todos</option>
+                                <!-- Será preenchido via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-date">Data</label>
+                            <input type="date" id="filter-date">
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Data da Compra</th>
+                                    <th>Tipo de Mapa</th>
+                                    <th>Responsável</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Será preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                        <div id="orders-loading" class="loading">
+                            <div class="spinner"></div>
+                            <p>Carregando pedidos...</p>
+                        </div>
+                        <div id="orders-empty" class="empty-state hidden">
+                            <i class="fas fa-inbox fa-3x"></i>
+                            <p>Nenhum pedido encontrado</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Registrar Nova Venda -->
+                <section id="new-sale-page" class="page">
+                    <header class="page-header">
+                        <h1>Registrar Nova Venda</h1>
+                    </header>
+                    
+                    <form id="new-sale-form" class="form-container">
+                        <div class="form-group">
+                            <label for="client-name">Nome Completo</label>
+                            <input type="text" id="client-name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="client-whatsapp">WhatsApp</label>
+                            <input type="tel" id="client-whatsapp" placeholder="Ex: 5511999999999" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="birth-date">Data de Nascimento</label>
+                                <input type="date" id="birth-date" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="birth-time">Hora de Nascimento</label>
+                                <input type="time" id="birth-time" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="birth-place">Local de Nascimento</label>
+                            <input type="text" id="birth-place" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="map-type">Tipo de Mapa</label>
+                            <select id="map-type" required>
+                                <!-- Será preenchido via JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="responsible">Responsável</label>
+                            <select id="responsible" required>
+                                <option value="Conrado">Conrado</option>
+                                <option value="Kavi">Kavi</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="requires-videocall">
+                            <label for="requires-videocall">Requer videochamada?</label>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Registrar Venda</button>
+                            <button type="reset" class="btn btn-outline">Limpar</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Clientes -->
+                <section id="clients-page" class="page">
+                    <header class="page-header">
+                        <h1>Clientes</h1>
+                        <div class="actions">
+                            <div class="search-container">
+                                <input type="text" id="client-search" placeholder="Buscar por nome ou telefone">
+                                <button id="client-search-btn" class="btn btn-icon">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <button id="export-clients-csv" class="btn btn-outline">
+                                <i class="fas fa-download"></i> Exportar CSV
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <div class="table-container">
+                        <table id="clients-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>WhatsApp</th>
+                                    <th>Mapas Comprados</th>
+                                    <th>Última Compra</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Será preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                        <div id="clients-loading" class="loading">
+                            <div class="spinner"></div>
+                            <p>Carregando clientes...</p>
+                        </div>
+                        <div id="clients-empty" class="empty-state hidden">
+                            <i class="fas fa-users fa-3x"></i>
+                            <p>Nenhum cliente encontrado</p>
+                        </div>
+                    </div>
+
+                    <!-- Modal de Detalhes do Cliente -->
+                    <div id="client-details-modal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>Detalhes do Cliente</h2>
+                                <button class="close-modal">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="client-info">
+                                    <h3 id="modal-client-name"></h3>
+                                    <p id="modal-client-whatsapp"></p>
+                                    <p id="modal-client-birth"></p>
+                                </div>
+                                
+                                <h4>Histórico de Compras</h4>
+                                <div class="table-container">
+                                    <table id="client-history-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Tipo de Mapa</th>
+                                                <th>Responsável</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Será preenchido via JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="modal-actions">
+                                    <button id="modal-whatsapp-btn" class="btn btn-primary">
+                                        <i class="fab fa-whatsapp"></i> Abrir WhatsApp
+                                    </button>
+                                    <button id="modal-new-sale-btn" class="btn btn-outline">
+                                        <i class="fas fa-cart-plus"></i> Nova Venda
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Agenda de Videochamadas -->
+                <section id="video-calls-page" class="page">
+                    <header class="page-header">
+                        <h1>Agenda de Videochamadas</h1>
+                        <div class="actions">
+                            <button id="add-videocall-btn" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Agendar Videochamada
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <button id="prev-month" class="btn btn-icon">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <h2 id="current-month">Junho 2025</h2>
+                            <button id="next-month" class="btn btn-icon">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        
+                        <div id="calendar" class="calendar">
+                            <!-- Será preenchido via JavaScript -->
+                        </div>
+                        
+                        <div id="day-schedule" class="day-schedule">
+                            <h3 id="selected-date">Nenhuma data selecionada</h3>
+                            <div id="appointments-container">
+                                <!-- Será preenchido via JavaScript -->
+                            </div>
+                            <div id="appointments-empty" class="empty-state">
+                                <i class="fas fa-calendar-day fa-3x"></i>
+                                <p>Nenhum agendamento para esta data</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal de Agendamento -->
+                    <div id="schedule-modal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>Agendar Videochamada</h2>
+                                <button class="close-modal">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="schedule-form">
+                                    <div class="form-group">
+                                        <label for="schedule-client">Cliente</label>
+                                        <select id="schedule-client" required>
+                                            <!-- Será preenchido via JavaScript -->
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="schedule-date">Data</label>
+                                            <input type="date" id="schedule-date" required>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="schedule-time">Hora</label>
+                                            <input type="time" id="schedule-time" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="schedule-notes">Anotações</label>
+                                        <textarea id="schedule-notes" rows="3"></textarea>
+                                    </div>
+                                    
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary">Agendar</button>
+                                        <button type="button" class="btn btn-outline close-modal">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Resumo Financeiro -->
+                <section id="financial-page" class="page">
+                    <header class="page-header">
+                        <h1>Resumo Financeiro</h1>
+                        <div class="actions">
+                            <div class="period-selector">
+                                <button data-period="day" class="btn btn-outline active">Dia</button>
+                                <button data-period="week" class="btn btn-outline">Semana</button>
+                                <button data-period="month" class="btn btn-outline">Mês</button>
+                            </div>
+                            <button id="export-financial-csv" class="btn btn-outline">
+                                <i class="fas fa-download"></i> Exportar CSV
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <div class="date-navigator">
+                        <button id="prev-period" class="btn btn-icon">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h3 id="current-period">Hoje</h3>
+                        <button id="next-period" class="btn btn-icon">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-simple"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>Total de Vendas</h4>
+                                <p id="total-sales">0</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>Valor Total</h4>
+                                <p id="total-value">R$ 0,00</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>Conrado</h4>
+                                <p id="conrado-value">R$ 0,00</p>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h4>Kavi</h4>
+                                <p id="kavi-value">R$ 0,00</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-container">
+                        <div class="chart-card">
+                            <h3>Vendas por Tipo de Mapa</h3>
+                            <div id="map-type-chart" class="chart"></div>
+                        </div>
+                        
+                        <div class="chart-card">
+                            <h3>Divisão de Receita</h3>
+                            <div id="revenue-split-chart" class="chart"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Configurações -->
+                <section id="settings-page" class="page">
+                    <header class="page-header">
+                        <h1>Configurações</h1>
+                        <div class="actions">
+                            <button id="add-map-type-btn" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Novo Tipo de Mapa
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <div class="table-container">
+                        <table id="map-types-table">
+                            <thead>
+                                <tr>
+                                    <th>Tipo de Mapa</th>
+                                    <th>Valor (R$)</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Será preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                        <div id="map-types-loading" class="loading">
+                            <div class="spinner"></div>
+                            <p>Carregando tipos de mapa...</p>
+                        </div>
+                    </div>
+
+                    <!-- Modal de Tipo de Mapa -->
+                    <div id="map-type-modal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2 id="map-type-modal-title">Adicionar Tipo de Mapa</h2>
+                                <button class="close-modal">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="map-type-form">
+                                    <input type="hidden" id="map-type-id">
+                                    <div class="form-group">
+                                        <label for="map-type-name">Nome do Mapa</label>
+                                        <input type="text" id="map-type-name" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="map-type-value">Valor (R$)</label>
+                                        <input type="number" id="map-type-value" min="0" step="0.01" required>
+                                    </div>
+                                    
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary">Salvar</button>
+                                        <button type="button" class="btn btn-outline close-modal">Cancelar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Toast de Notificações -->
+        <div id="toast" class="toast">
+            <div class="toast-content">
+                <i id="toast-icon" class="fas"></i>
+                <div class="toast-message" id="toast-message"></div>
+            </div>
+            <div class="toast-progress"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/airtable@0.12.2/build/airtable.browser.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/airtable.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/map-queue.js"></script>
+    <script src="js/new-sale.js"></script>
+    <script src="js/clients.js"></script>
+    <script src="js/video-calls.js"></script>
+    <script src="js/financial.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
