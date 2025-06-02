@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="manifest.json">
+    <!-- Carregando bibliotecas externas primeiro -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.airtable.com/js/build/airtable.browser.js"></script>
 </head>
 <body>
     <div id="app">
@@ -319,56 +325,81 @@
                             </button>
                         </div>
                         
-                        <div id="calendar" class="calendar"></div>
-                        
-                        <div class="day-schedule">
-                            <h3 id="selected-date">Selecione uma data</h3>
-                            <div id="appointments-container" class="appointments-container"></div>
-                            <div id="appointments-empty" class="empty-state">
-                                <i class="fas fa-calendar-day fa-3x"></i>
-                                <p>Nenhuma videochamada agendada para este dia</p>
-                            </div>
+                        <div id="calendar" class="calendar">
+                            <!-- Será preenchido via JavaScript -->
                         </div>
                     </div>
-
+                    
                     <!-- Modal de Agendamento -->
-                    <div id="schedule-modal" class="modal">
+                    <div id="videocall-modal" class="modal">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h2>Agendar Videochamada</h2>
                                 <button class="close-modal">&times;</button>
                             </div>
                             <div class="modal-body">
-                                <form id="schedule-form" class="form-container">
+                                <form id="videocall-form">
                                     <div class="form-group">
-                                        <label for="schedule-client">Cliente</label>
-                                        <select id="schedule-client" required>
+                                        <label for="videocall-client">Cliente</label>
+                                        <select id="videocall-client" required>
                                             <!-- Será preenchido via JavaScript -->
                                         </select>
                                     </div>
                                     
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="schedule-date">Data</label>
-                                            <input type="date" id="schedule-date" required>
+                                            <label for="videocall-date">Data</label>
+                                            <input type="date" id="videocall-date" required>
                                         </div>
                                         
                                         <div class="form-group">
-                                            <label for="schedule-time">Hora</label>
-                                            <input type="time" id="schedule-time" required>
+                                            <label for="videocall-time">Hora</label>
+                                            <input type="time" id="videocall-time" required>
                                         </div>
                                     </div>
                                     
                                     <div class="form-group">
-                                        <label for="schedule-notes">Anotações</label>
-                                        <textarea id="schedule-notes" rows="3"></textarea>
+                                        <label for="videocall-notes">Anotações</label>
+                                        <textarea id="videocall-notes" rows="3"></textarea>
                                     </div>
                                     
                                     <div class="form-actions">
                                         <button type="submit" class="btn btn-primary">Agendar</button>
-                                        <button type="reset" class="btn btn-outline">Limpar</button>
+                                        <button type="button" class="btn btn-outline cancel-modal">Cancelar</button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Modal de Detalhes da Videochamada -->
+                    <div id="videocall-details-modal" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>Detalhes da Videochamada</h2>
+                                <button class="close-modal">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="videocall-info">
+                                    <h3 id="modal-videocall-client"></h3>
+                                    <p id="modal-videocall-datetime"></p>
+                                    <div class="notes-container">
+                                        <h4>Anotações:</h4>
+                                        <p id="modal-videocall-notes"></p>
+                                    </div>
+                                </div>
+                                
+                                <div class="modal-actions">
+                                    <button id="modal-videocall-whatsapp" class="btn btn-primary">
+                                        <i class="fab fa-whatsapp"></i> Abrir WhatsApp
+                                    </button>
+                                    <button id="modal-videocall-complete" class="btn btn-success">
+                                        <i class="fas fa-check"></i> Marcar como Concluída
+                                    </button>
+                                    <button id="modal-videocall-delete" class="btn btn-danger">
+                                        <i class="fas fa-trash"></i> Excluir
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -379,44 +410,48 @@
                     <header class="page-header">
                         <h1>Resumo Financeiro</h1>
                         <div class="actions">
-                            <button id="export-financial-csv" class="btn btn-outline">
-                                <i class="fas fa-download"></i> Exportar CSV
-                            </button>
+                            <div class="period-selector">
+                                <button data-period="day" class="btn btn-outline period-btn active">Dia</button>
+                                <button data-period="week" class="btn btn-outline period-btn">Semana</button>
+                                <button data-period="month" class="btn btn-outline period-btn">Mês</button>
+                            </div>
+                            <input type="date" id="financial-date" value="">
                         </div>
                     </header>
                     
-                    <div class="period-selector">
-                        <button data-period="day" class="active">Dia</button>
-                        <button data-period="week">Semana</button>
-                        <button data-period="month">Mês</button>
-                    </div>
-                    
-                    <div class="period-navigation">
-                        <button id="prev-period" class="btn btn-icon">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <h2 id="current-period">Hoje</h2>
-                        <button id="next-period" class="btn btn-icon">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="stats-container">
-                        <div class="stat-card">
-                            <h3>Total de Vendas</h3>
-                            <p id="total-sales">0</p>
+                    <div class="dashboard">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3>Total de Vendas</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="metric">
+                                    <span id="total-sales-count">0</span>
+                                    <span class="metric-label">Mapas</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <h3>Valor Total</h3>
-                            <p id="total-value">R$ 0,00</p>
+                        
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3>Faturamento</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="metric">
+                                    <span id="total-revenue">R$ 0,00</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <h3>Conrado</h3>
-                            <p id="conrado-value">R$ 0,00</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Kavi</h3>
-                            <p id="kavi-value">R$ 0,00</p>
+                        
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3>Média por Venda</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="metric">
+                                    <span id="average-sale">R$ 0,00</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -424,15 +459,34 @@
                         <div class="chart-card">
                             <h3>Vendas por Tipo de Mapa</h3>
                             <div class="chart-container">
-                                <canvas id="map-type-chart"></canvas>
+                                <canvas id="map-types-chart"></canvas>
                             </div>
                         </div>
+                        
                         <div class="chart-card">
-                            <h3>Divisão de Receita</h3>
+                            <h3>Vendas por Responsável</h3>
                             <div class="chart-container">
-                                <canvas id="revenue-split-chart"></canvas>
+                                <canvas id="responsible-chart"></canvas>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <h3>Detalhamento de Vendas</h3>
+                        <table id="financial-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Data</th>
+                                    <th>Tipo de Mapa</th>
+                                    <th>Responsável</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Será preenchido via JavaScript -->
+                            </tbody>
+                        </table>
                     </div>
                 </section>
 
@@ -444,13 +498,13 @@
                     
                     <div class="settings-container">
                         <div class="settings-card">
-                            <h2>Tipos de Mapa</h2>
+                            <h3>Tipos de Mapa</h3>
                             <div class="table-container">
                                 <table id="map-types-table">
                                     <thead>
                                         <tr>
                                             <th>Nome</th>
-                                            <th>Valor</th>
+                                            <th>Valor (R$)</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
@@ -458,69 +512,103 @@
                                         <!-- Será preenchido via JavaScript -->
                                     </tbody>
                                 </table>
+                                <div id="map-types-loading" class="loading">
+                                    <div class="spinner"></div>
+                                    <p>Carregando tipos de mapa...</p>
+                                </div>
                             </div>
-                            <div class="card-actions">
-                                <button id="add-map-type-btn" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Adicionar Tipo de Mapa
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Modal de Tipo de Mapa -->
-                    <div id="map-type-modal" class="modal">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h2 id="map-type-modal-title">Adicionar Tipo de Mapa</h2>
-                                <button class="close-modal">&times;</button>
-                            </div>
-                            <div class="modal-body">
-                                <form id="map-type-form" class="form-container">
-                                    <input type="hidden" id="map-type-id">
-                                    
+                            
+                            <form id="add-map-type-form" class="form-container">
+                                <h4>Adicionar Tipo de Mapa</h4>
+                                <div class="form-row">
                                     <div class="form-group">
                                         <label for="map-type-name">Nome</label>
                                         <input type="text" id="map-type-name" required>
                                     </div>
-                                    
                                     <div class="form-group">
                                         <label for="map-type-value">Valor (R$)</label>
                                         <input type="number" id="map-type-value" min="0" step="0.01" required>
                                     </div>
-                                    
-                                    <div class="form-actions">
-                                        <button type="submit" class="btn btn-primary">Salvar</button>
-                                        <button type="button" class="btn btn-outline close-modal">Cancelar</button>
-                                    </div>
-                                </form>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Adicionar</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <h3>Exportar Dados</h3>
+                            <div class="export-options">
+                                <button id="export-all-clients" class="btn btn-outline">
+                                    <i class="fas fa-users"></i> Exportar Todos os Clientes
+                                </button>
+                                <button id="export-all-orders" class="btn btn-outline">
+                                    <i class="fas fa-list-check"></i> Exportar Todos os Pedidos
+                                </button>
+                                <button id="export-all-videocalls" class="btn btn-outline">
+                                    <i class="fas fa-video"></i> Exportar Todas as Videochamadas
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-card">
+                            <h3>Tema</h3>
+                            <div class="theme-selector">
+                                <button id="light-theme" class="btn btn-outline theme-btn">
+                                    <i class="fas fa-sun"></i> Tema Claro
+                                </button>
+                                <button id="dark-theme" class="btn btn-outline theme-btn active">
+                                    <i class="fas fa-moon"></i> Tema Escuro
+                                </button>
                             </div>
                         </div>
                     </div>
                 </section>
             </main>
         </div>
-
+        
         <!-- Toast para notificações -->
-        <div id="toast" class="toast"></div>
+        <div id="toast" class="toast hidden">
+            <div class="toast-content">
+                <i id="toast-icon" class="fas"></i>
+                <span id="toast-message"></span>
+            </div>
+        </div>
     </div>
-
-    <!-- Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.12.1/build/airtable.browser.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
     
+    <!-- Scripts - ORDEM CORRIGIDA -->
+    <!-- 1. Primeiro carregamos o config.js que define as variáveis e funções globais -->
     <script src="config.js"></script>
-    <script src="auth.js"></script>
-    <script src="airtable.js"></script>
+    
+    <!-- 2. Depois carregamos os utilitários e funções de autenticação -->
     <script src="utils.js"></script>
-    <script src="ui.js"></script>
+    <script src="auth.js"></script>
+    
+    <!-- 3. Depois carregamos os scripts de funcionalidades específicas -->
     <script src="map-queue.js"></script>
     <script src="new-sale.js"></script>
     <script src="clients.js"></script>
     <script src="video-calls.js"></script>
     <script src="financial.js"></script>
     <script src="settings.js"></script>
+    
+    <!-- 4. Por último carregamos a UI e o app principal -->
+    <script src="ui.js"></script>
     <script src="app.js"></script>
+    
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado com sucesso:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Falha ao registrar Service Worker:', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
