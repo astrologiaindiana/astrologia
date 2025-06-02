@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <base href="/astrologia/">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Astrologia Indiana</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="manifest.json">
@@ -16,7 +15,7 @@
         <div id="login-screen" class="screen active">
             <div class="login-container">
                 <div class="logo-container">
-                    <img src="assets/logo.png" alt="Astrologia Indiana" class="logo">
+                    <img src="logo.png" alt="Astrologia Indiana" class="logo">
                     <h1>Astrologia Indiana</h1>
                 </div>
                 <div class="login-form">
@@ -39,7 +38,7 @@
             <!-- Sidebar -->
             <aside class="sidebar">
                 <div class="sidebar-header">
-                    <img src="assets/logo.png" alt="Astrologia Indiana" class="logo-small">
+                    <img src="logo.png" alt="Astrologia Indiana" class="logo-small">
                     <h2>Astrologia Indiana</h2>
                 </div>
                 <nav class="sidebar-nav">
@@ -72,7 +71,7 @@
                 </nav>
                 <div class="sidebar-footer">
                     <div class="user-info">
-                        <img src="assets/user-avatar.png" alt="Avatar" class="user-avatar">
+                        <img src="user-avatar.png" alt="Avatar" class="user-avatar">
                         <span id="user-name">Usuário</span>
                     </div>
                     <button id="logout-btn" class="btn btn-outline">
@@ -320,18 +319,14 @@
                             </button>
                         </div>
                         
-                        <div id="calendar" class="calendar">
-                            <!-- Será preenchido via JavaScript -->
-                        </div>
+                        <div id="calendar" class="calendar"></div>
                         
-                        <div id="day-schedule" class="day-schedule">
-                            <h3 id="selected-date">Nenhuma data selecionada</h3>
-                            <div id="appointments-container">
-                                <!-- Será preenchido via JavaScript -->
-                            </div>
+                        <div class="day-schedule">
+                            <h3 id="selected-date">Selecione uma data</h3>
+                            <div id="appointments-container" class="appointments-container"></div>
                             <div id="appointments-empty" class="empty-state">
                                 <i class="fas fa-calendar-day fa-3x"></i>
-                                <p>Nenhum agendamento para esta data</p>
+                                <p>Nenhuma videochamada agendada para este dia</p>
                             </div>
                         </div>
                     </div>
@@ -344,7 +339,7 @@
                                 <button class="close-modal">&times;</button>
                             </div>
                             <div class="modal-body">
-                                <form id="schedule-form">
+                                <form id="schedule-form" class="form-container">
                                     <div class="form-group">
                                         <label for="schedule-client">Cliente</label>
                                         <select id="schedule-client" required>
@@ -371,7 +366,7 @@
                                     
                                     <div class="form-actions">
                                         <button type="submit" class="btn btn-primary">Agendar</button>
-                                        <button type="button" class="btn btn-outline close-modal">Cancelar</button>
+                                        <button type="reset" class="btn btn-outline">Limpar</button>
                                     </div>
                                 </form>
                             </div>
@@ -384,22 +379,23 @@
                     <header class="page-header">
                         <h1>Resumo Financeiro</h1>
                         <div class="actions">
-                            <div class="period-selector">
-                                <button data-period="day" class="btn btn-outline active">Dia</button>
-                                <button data-period="week" class="btn btn-outline">Semana</button>
-                                <button data-period="month" class="btn btn-outline">Mês</button>
-                            </div>
                             <button id="export-financial-csv" class="btn btn-outline">
                                 <i class="fas fa-download"></i> Exportar CSV
                             </button>
                         </div>
                     </header>
                     
-                    <div class="date-navigator">
+                    <div class="period-selector">
+                        <button data-period="day" class="active">Dia</button>
+                        <button data-period="week">Semana</button>
+                        <button data-period="month">Mês</button>
+                    </div>
+                    
+                    <div class="period-navigation">
                         <button id="prev-period" class="btn btn-icon">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <h3 id="current-period">Hoje</h3>
+                        <h2 id="current-period">Hoje</h2>
                         <button id="next-period" class="btn btn-icon">
                             <i class="fas fa-chevron-right"></i>
                         </button>
@@ -407,55 +403,35 @@
                     
                     <div class="stats-container">
                         <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-chart-simple"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h4>Total de Vendas</h4>
-                                <p id="total-sales">0</p>
-                            </div>
+                            <h3>Total de Vendas</h3>
+                            <p id="total-sales">0</p>
                         </div>
-                        
                         <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-money-bill-wave"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h4>Valor Total</h4>
-                                <p id="total-value">R$ 0,00</p>
-                            </div>
+                            <h3>Valor Total</h3>
+                            <p id="total-value">R$ 0,00</p>
                         </div>
-                        
                         <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h4>Conrado</h4>
-                                <p id="conrado-value">R$ 0,00</p>
-                            </div>
+                            <h3>Conrado</h3>
+                            <p id="conrado-value">R$ 0,00</p>
                         </div>
-                        
                         <div class="stat-card">
-                            <div class="stat-icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h4>Kavi</h4>
-                                <p id="kavi-value">R$ 0,00</p>
-                            </div>
+                            <h3>Kavi</h3>
+                            <p id="kavi-value">R$ 0,00</p>
                         </div>
                     </div>
                     
                     <div class="charts-container">
                         <div class="chart-card">
                             <h3>Vendas por Tipo de Mapa</h3>
-                            <div id="map-type-chart" class="chart"></div>
+                            <div class="chart-container">
+                                <canvas id="map-type-chart"></canvas>
+                            </div>
                         </div>
-                        
                         <div class="chart-card">
                             <h3>Divisão de Receita</h3>
-                            <div id="revenue-split-chart" class="chart"></div>
+                            <div class="chart-container">
+                                <canvas id="revenue-split-chart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -464,29 +440,30 @@
                 <section id="settings-page" class="page">
                     <header class="page-header">
                         <h1>Configurações</h1>
-                        <div class="actions">
-                            <button id="add-map-type-btn" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Novo Tipo de Mapa
-                            </button>
-                        </div>
                     </header>
                     
-                    <div class="table-container">
-                        <table id="map-types-table">
-                            <thead>
-                                <tr>
-                                    <th>Tipo de Mapa</th>
-                                    <th>Valor (R$)</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Será preenchido via JavaScript -->
-                            </tbody>
-                        </table>
-                        <div id="map-types-loading" class="loading">
-                            <div class="spinner"></div>
-                            <p>Carregando tipos de mapa...</p>
+                    <div class="settings-container">
+                        <div class="settings-card">
+                            <h2>Tipos de Mapa</h2>
+                            <div class="table-container">
+                                <table id="map-types-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Valor</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Será preenchido via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-actions">
+                                <button id="add-map-type-btn" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Adicionar Tipo de Mapa
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -498,10 +475,11 @@
                                 <button class="close-modal">&times;</button>
                             </div>
                             <div class="modal-body">
-                                <form id="map-type-form">
+                                <form id="map-type-form" class="form-container">
                                     <input type="hidden" id="map-type-id">
+                                    
                                     <div class="form-group">
-                                        <label for="map-type-name">Nome do Mapa</label>
+                                        <label for="map-type-name">Nome</label>
                                         <input type="text" id="map-type-name" required>
                                     </div>
                                     
@@ -522,33 +500,27 @@
             </main>
         </div>
 
-        <!-- Toast de Notificações -->
-        <div id="toast" class="toast">
-            <div class="toast-content">
-                <i id="toast-icon" class="fas"></i>
-                <div class="toast-message" id="toast-message"></div>
-            </div>
-            <div class="toast-progress"></div>
-        </div>
+        <!-- Toast para notificações -->
+        <div id="toast" class="toast"></div>
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/airtable@0.12.2/build/airtable.browser.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/airtable.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/map-queue.js"></script>
-    <script src="js/new-sale.js"></script>
-    <script src="js/clients.js"></script>
-    <script src="js/video-calls.js"></script>
-    <script src="js/financial.js"></script>
-    <script src="js/settings.js"></script>
-    <script src="js/app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/airtable@0.12.1/build/airtable.browser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script src="airtable.js"></script>
+    <script src="utils.js"></script>
+    <script src="ui.js"></script>
+    <script src="map-queue.js"></script>
+    <script src="new-sale.js"></script>
+    <script src="clients.js"></script>
+    <script src="video-calls.js"></script>
+    <script src="financial.js"></script>
+    <script src="settings.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
